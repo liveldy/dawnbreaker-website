@@ -1,7 +1,14 @@
 const previews={draw:{src:'assets/draw-mobile.webp',alt:'珍藏阁抽卡界面：灵魂莲华阿狸海报，底部单抽与十连抽',caption:'珍藏阁 · 每一份日光，都有新的相遇。'},words:{src:'assets/words-mobile.webp',alt:'飞跃词汇学习界面，包含音标、朗读和英文照写练习',caption:'飞跃 · 从一个单词开始。'},albums:{src:'assets/albums-mobile.webp',alt:'英雄联盟卡册，按系列浏览卡片',caption:'珍藏阁 · 每一张卡，都有自己的位置。'},cards:{src:'assets/cards-mobile.webp',alt:'英雄联盟卡片收藏与筛选界面',caption:'珍藏阁 · 把喜欢的相遇留下。'}};
 previews.tools={src:'assets/tools-mobile.webp',alt:'插件商店，可以按需安装个人工具',caption:'插件商店 · 按需开启，随时调整。'};
-const image=document.querySelector('#stage-image');let current='draw';
-function showPreview(name){if(!previews[name]||name===current)return;current=name;const p=previews[name];image.src=p.src;image.alt=p.alt;image.classList.remove('swapping');void image.offsetWidth;image.classList.add('swapping');document.querySelector('#stage-caption').textContent=p.caption;document.querySelectorAll('.preview-controls button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.show===name)));}
+const image=document.querySelector('#stage-image');let current='draw',displayed='draw';const imageCache=new Map();
+function readyImage(src){if(!imageCache.has(src))imageCache.set(src,new Promise((resolve,reject)=>{const asset=new Image();asset.onload=()=>resolve(asset);asset.onerror=()=>{imageCache.delete(src);reject(new Error('预览图暂时未加载'));};asset.src=src;}));return imageCache.get(src);}
+Object.values(previews).forEach(p=>readyImage(p.src).catch(()=>{}));
+async function showPreview(name){
+ if(!previews[name]||name===current)return;current=name;const p=previews[name];image.setAttribute('aria-busy','true');
+ try{await readyImage(p.src);if(current!==name)return;image.src=p.src;image.alt=p.alt;image.classList.remove('swapping');void image.offsetWidth;image.classList.add('swapping');displayed=name;document.querySelector('#stage-caption').textContent=p.caption;document.querySelectorAll('.preview-controls button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.show===name)));}
+ catch{if(current===name)current=displayed;}
+ finally{if(current===name)image.setAttribute('aria-busy','false');}
+}
 document.querySelectorAll('[data-show]').forEach(button=>button.addEventListener('click',()=>{showPreview(button.dataset.show);if(innerWidth<=900&&button.classList.contains('feature-title'))document.querySelector('.stage').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}));
 const reveals=new IntersectionObserver(entries=>entries.forEach(entry=>{if(!entry.isIntersecting)return;entry.target.classList.add('is-entering');reveals.unobserve(entry.target);}),{threshold:.12});
 document.querySelectorAll('.reveal').forEach((element,index)=>{element.style.setProperty('--delay',(index%3)*70+'ms');reveals.observe(element);});
